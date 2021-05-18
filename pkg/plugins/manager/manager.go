@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/grafana/pkg/plugins/backendplugin"
 	"github.com/grafana/grafana/pkg/plugins/manager/installer"
 	"github.com/grafana/grafana/pkg/registry"
+	"github.com/grafana/grafana/pkg/services/rendering"
 	"github.com/grafana/grafana/pkg/services/sqlstore"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/util"
@@ -52,9 +53,10 @@ type PluginScanner struct {
 }
 
 type PluginManager struct {
-	BackendPluginManager backendplugin.Manager `inject:""`
-	Cfg                  *setting.Cfg          `inject:""`
-	SQLStore             *sqlstore.SQLStore    `inject:""`
+	BackendPluginManager backendplugin.Manager       `inject:""`
+	Cfg                  *setting.Cfg                `inject:""`
+	SQLStore             *sqlstore.SQLStore          `inject:""`
+	RenderingService     *rendering.RenderingService `inject:""`
 	pluginInstaller      plugins.PluginInstaller
 	log                  log.Logger
 	scanningErrors       []error
@@ -171,6 +173,11 @@ func (pm *PluginManager) initExternalPlugins() error {
 	if pm.Renderer() != nil {
 		staticRoutes := pm.renderer.InitFrontendPlugin(pm.Cfg)
 		staticRoutesList = append(staticRoutesList, staticRoutes...)
+
+		err = pm.RenderingService.StartPlugin(context.Background(), pm.Renderer())
+		if err != nil {
+			return err
+		}
 	}
 	pm.staticRoutes = staticRoutesList
 
@@ -767,6 +774,10 @@ func (pm *PluginManager) StaticRoutes() []*plugins.PluginStaticRoute {
 	return pm.staticRoutes
 }
 
+func (pm *PluginManager) IsRendererPlugin(pluginID string) bool {
+	return pm.Renderer() != nil && pm.Renderer().Id == pluginID
+}
+
 func (pm *PluginManager) Install(ctx context.Context, pluginID, version string) error {
 	plugin := pm.GetPlugin(pluginID)
 	if plugin != nil {
@@ -819,6 +830,13 @@ func (pm *PluginManager) Uninstall(ctx context.Context, pluginID string) error {
 
 	if pm.BackendPluginManager.IsRegistered(pluginID) {
 		err := pm.BackendPluginManager.UnregisterAndStop(ctx, pluginID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if pm.IsRendererPlugin(pluginID) {
+		err := pm.RenderingService.StopPlugin(ctx)
 		if err != nil {
 			return err
 		}

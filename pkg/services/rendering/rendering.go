@@ -47,10 +47,10 @@ type RenderingService struct {
 	renderCSVAction renderCSVFunc
 	domain          string
 	inProgressCount int
+	pluginAvailable bool
 
 	Cfg                *setting.Cfg             `inject:""`
 	RemoteCacheService *remotecache.RemoteCache `inject:""`
-	PluginManager      plugins.Manager          `inject:""`
 }
 
 func (rs *RenderingService) Init() error {
@@ -93,20 +93,6 @@ func (rs *RenderingService) Run(ctx context.Context) error {
 		return nil
 	}
 
-	if rs.pluginAvailable() {
-		rs.log = rs.log.New("renderer", "plugin")
-		rs.pluginInfo = rs.PluginManager.Renderer()
-
-		if err := rs.startPlugin(ctx); err != nil {
-			return err
-		}
-
-		rs.renderAction = rs.renderViaPlugin
-		rs.renderCSVAction = rs.renderCSVViaPlugin
-		<-ctx.Done()
-		return nil
-	}
-
 	rs.log.Debug("No image renderer found/installed. " +
 		"For image rendering support please install the grafana-image-renderer plugin. " +
 		"Read more at https://grafana.com/docs/grafana/latest/administration/image_rendering/")
@@ -115,8 +101,54 @@ func (rs *RenderingService) Run(ctx context.Context) error {
 	return nil
 }
 
-func (rs *RenderingService) pluginAvailable() bool {
-	return rs.PluginManager.Renderer() != nil
+func (rs *RenderingService) StartPlugin(ctx context.Context, renderer *plugins.RendererPlugin) error {
+	if rs.remoteAvailable() {
+		rs.log.Warn("Cannot start a renderer plugin when a remote renderer is already configured")
+		return nil
+	}
+
+	if rs.pluginAvailable {
+		rs.log.Warn("Renderer plugin has already started")
+		return nil
+	}
+
+	rs.log = rs.log.New("renderer", "plugin")
+	rs.pluginInfo = renderer
+
+	if err := rs.startPlugin(ctx); err != nil {
+		return err
+	}
+
+	rs.renderAction = rs.renderViaPlugin
+	rs.renderCSVAction = rs.renderCSVViaPlugin
+
+	rs.pluginAvailable = true
+
+	return nil
+}
+
+func (rs *RenderingService) StopPlugin(ctx context.Context) error {
+	// Fallback to remote renderer if available
+	if rs.remoteAvailable() {
+		rs.log = rs.log.New("renderer", "http")
+		rs.log.Info("Backend rendering via external http server")
+		rs.renderAction = rs.renderViaHTTP
+		rs.renderCSVAction = rs.renderCSVViaHTTP
+		return nil
+	}
+
+	if !rs.pluginAvailable {
+		rs.log.Warn("Renderer plugin has not been started")
+		return nil
+	}
+
+	rs.renderAction = nil
+	rs.renderCSVAction = nil
+	rs.pluginInfo = nil
+
+	rs.pluginAvailable = false
+
+	return nil
 }
 
 func (rs *RenderingService) remoteAvailable() bool {
@@ -124,7 +156,7 @@ func (rs *RenderingService) remoteAvailable() bool {
 }
 
 func (rs *RenderingService) IsAvailable() bool {
-	return rs.remoteAvailable() || rs.pluginAvailable()
+	return rs.remoteAvailable() || rs.pluginAvailable
 }
 
 func (rs *RenderingService) RenderErrorImage(err error) (*RenderResult, error) {
