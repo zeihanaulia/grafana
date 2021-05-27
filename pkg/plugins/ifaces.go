@@ -60,6 +60,8 @@ type Manager interface {
 	Install(ctx context.Context, pluginID, version string) error
 	// Uninstall uninstalls a plugin.
 	Uninstall(ctx context.Context, pluginID string) error
+	// Reload will synchronize the plugin manager state with the relevant plugin source of truth
+	Reload(ctx context.Context) error
 }
 
 type ImportDashboardInput struct {

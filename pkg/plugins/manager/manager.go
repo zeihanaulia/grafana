@@ -769,6 +769,15 @@ func (pm *PluginManager) StaticRoutes() []*plugins.PluginStaticRoute {
 	return pm.staticRoutes
 }
 
+func (pm *PluginManager) Reload(_ context.Context) error {
+	err := pm.initExternalPlugins()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (pm *PluginManager) Install(ctx context.Context, pluginID, version string) error {
 	plugin := pm.GetPlugin(pluginID)
 	if plugin != nil {

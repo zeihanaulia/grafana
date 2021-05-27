@@ -376,6 +376,14 @@ func (hs *HTTPServer) GetPluginErrorsList(_ *models.ReqContext) response.Respons
 	return response.JSON(200, hs.PluginManager.ScanningErrors())
 }
 
+func (hs *HTTPServer) ReloadPlugins(c *models.ReqContext) response.Response {
+	err := hs.PluginManager.Reload(c.Req.Context())
+	if err != nil {
+		return response.Error(http.StatusInternalServerError, "Failed to reload plugins", err)
+	}
+	return response.JSON(http.StatusOK, []byte{})
+}
+
 func (hs *HTTPServer) InstallPlugin(c *models.ReqContext, dto dtos.InstallPluginCommand) response.Response {
 	pluginID := c.Params("pluginId")
 
