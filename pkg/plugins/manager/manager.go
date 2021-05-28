@@ -368,8 +368,15 @@ func (pm *PluginManager) scan(pluginDir string, requireSigned bool) error {
 
 		// Check if scanning found plugins that are already installed
 		if existing := pm.GetPlugin(scannedPlugin.Id); existing != nil {
-			pm.log.Debug("Skipping plugin as it's already installed", "plugin", existing.Id, "version", existing.Info.Version)
-			delete(scanner.plugins, scannedPluginPath)
+			if existing.Info.Version != scannedPlugin.Info.Version {
+				err := pm.Uninstall(context.Background(), existing.Id)
+				if err != nil {
+					return err
+				}
+			} else {
+				pm.log.Debug("Skipping plugin as it's already installed", "plugin", existing.Id, "version", existing.Info.Version)
+				delete(scanner.plugins, scannedPluginPath)
+			}
 		}
 	}
 
