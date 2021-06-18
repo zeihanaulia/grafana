@@ -3,10 +3,11 @@ package grpcplugin
 import (
 	"os/exec"
 
+	"github.com/grafana/grafana-plugin-manager/pkg/plugins/backendplugin/pluginextensionv2"
+
 	"github.com/grafana/grafana-plugin-sdk-go/backend/grpcplugin"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/plugins/backendplugin"
-	"github.com/grafana/grafana/pkg/plugins/backendplugin/pluginextensionv2"
 	goplugin "github.com/hashicorp/go-plugin"
 )
 

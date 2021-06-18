@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/grafana/grafana-plugin-manager/pkg/plugins/backendplugin/pluginextensionv2"
+
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/plugins/backendplugin"
 	"github.com/grafana/grafana/pkg/plugins/backendplugin/grpcplugin"
-	"github.com/grafana/grafana/pkg/plugins/backendplugin/pluginextensionv2"
 	"github.com/grafana/grafana/pkg/util/errutil"
 )
 

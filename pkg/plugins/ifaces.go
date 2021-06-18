@@ -3,6 +3,8 @@ package plugins
 import (
 	"context"
 
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
+
 	"github.com/grafana/grafana/pkg/components/simplejson"
 	"github.com/grafana/grafana/pkg/models"
 )
@@ -58,6 +60,12 @@ type Manager interface {
 	Install(ctx context.Context, pluginID, version string) error
 	// Uninstall uninstalls a plugin.
 	Uninstall(ctx context.Context, pluginID string) error
+	// IsV2Enabled checks if plugin manager v2 feature is enabled
+	IsV2Enabled() bool
+	// SupportsV2 checks if plugin is managed by plugin manager v2
+	SupportsV2(pluginID string) bool
+	// QueryData queries data from plugin manager v2
+	QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error)
 }
 
 type ImportDashboardInput struct {

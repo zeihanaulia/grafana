@@ -11,6 +11,8 @@ replace github.com/denisenkom/go-mssqldb => github.com/grafana/go-mssqldb v0.0.0
 // It's also present on grafana/loki's go.mod so we'll need till it gets updated.
 replace k8s.io/client-go => k8s.io/client-go v0.18.8
 
+replace github.com/grafana/grafana-plugin-manager => ../grafana-plugin-manager
+
 require (
 	cloud.google.com/go/storage v1.14.0
 	cuelang.org/go v0.3.2
@@ -54,10 +56,10 @@ require (
 	github.com/grafana/grafana-plugin-sdk-go v0.105.0
 	github.com/grafana/loki v1.6.2-0.20210520072447-15d417efe103
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/hashicorp/go-hclog v0.16.0
-	github.com/hashicorp/go-plugin v1.4.0
+	github.com/hashicorp/go-hclog v0.16.1
+	github.com/hashicorp/go-plugin v1.4.2
 	github.com/hashicorp/go-version v1.3.0
-	github.com/inconshreveable/log15 v0.0.0-20180818164646-67afb5ed74ec
+	github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac
 	github.com/influxdata/influxdb-client-go/v2 v2.2.3
 	github.com/influxdata/line-protocol v0.0.0-20210311194329-9aa0e372d097
 	github.com/jmespath/go-jmespath v0.4.0
@@ -67,7 +69,7 @@ require (
 	github.com/lib/pq v1.10.0
 	github.com/linkedin/goavro/v2 v2.10.0
 	github.com/magefile/mage v1.11.0
-	github.com/mattn/go-isatty v0.0.12
+	github.com/mattn/go-isatty v0.0.13
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/matttproud/golang_protobuf_extensions v1.0.1
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
@@ -118,6 +120,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	xorm.io/core v0.7.3
 	xorm.io/xorm v0.8.2
+	github.com/grafana/grafana-plugin-manager v0.0.0
 )
 
 replace github.com/apache/thrift => github.com/apache/thrift v0.14.1

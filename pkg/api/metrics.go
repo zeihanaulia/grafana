@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
+
+	"github.com/grafana/grafana/pkg/plugins/adapters"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana/pkg/expr"
@@ -72,6 +75,20 @@ func (hs *HTTPServer) QueryMetricsV2(c *models.ReqContext, reqDTO dtos.MetricReq
 	err := hs.PluginRequestValidator.Validate(ds.Url, nil)
 	if err != nil {
 		return response.Error(http.StatusForbidden, "Access denied", err)
+	}
+
+	if hs.PluginManager.IsV2Enabled() && hs.PluginManager.SupportsV2(ds.Type) {
+		req, err := createRequest(ds, request)
+		if err != nil {
+			return response.Error(http.StatusInternalServerError, "Request formation error", err)
+		}
+
+		resp, err := hs.PluginManager.QueryData(c.Req.Context(), req)
+		if err != nil {
+			return response.Error(http.StatusInternalServerError, "Metric request error", err)
+		}
+
+		return response.JSONStreaming(http.StatusOK, resp)
 	}
 
 	resp, err := hs.DataService.HandleRequest(c.Req.Context(), ds, request)
@@ -256,4 +273,42 @@ func (hs *HTTPServer) GetTestDataRandomWalk(c *models.ReqContext) response.Respo
 		return response.Error(http.StatusInternalServerError, "error converting results", err)
 	}
 	return toMacronResponse(qdr)
+}
+
+func createRequest(ds *models.DataSource, query plugins.DataQuery) (*backend.QueryDataRequest, error) {
+	instanceSettings, err := adapters.ModelToInstanceSettings(ds)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &backend.QueryDataRequest{
+		PluginContext: backend.PluginContext{
+			OrgID:                      ds.OrgId,
+			PluginID:                   ds.Type,
+			User:                       adapters.BackendUserFromSignedInUser(query.User),
+			DataSourceInstanceSettings: instanceSettings,
+		},
+		Queries: []backend.DataQuery{},
+		Headers: query.Headers,
+	}
+
+	for _, q := range query.Queries {
+		modelJSON, err := q.Model.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		req.Queries = append(req.Queries, backend.DataQuery{
+			RefID:         q.RefID,
+			Interval:      time.Duration(q.IntervalMS) * time.Millisecond,
+			MaxDataPoints: q.MaxDataPoints,
+			TimeRange: backend.TimeRange{
+				From: query.TimeRange.GetFromAsTimeUTC(),
+				To:   query.TimeRange.GetToAsTimeUTC(),
+			},
+			QueryType: q.QueryType,
+			JSON:      modelJSON,
+		})
+	}
+
+	return req, nil
 }

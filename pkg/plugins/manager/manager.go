@@ -15,6 +15,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
+
+	pluginsV2 "github.com/grafana/grafana-plugin-manager/pkg/plugins"
+
 	"github.com/grafana/grafana/pkg/infra/fs"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/infra/metrics"
@@ -52,9 +56,10 @@ type PluginScanner struct {
 }
 
 type PluginManager struct {
-	BackendPluginManager backendplugin.Manager `inject:""`
-	Cfg                  *setting.Cfg          `inject:""`
-	SQLStore             *sqlstore.SQLStore    `inject:""`
+	BackendPluginManager backendplugin.Manager   `inject:""`
+	Cfg                  *setting.Cfg            `inject:""`
+	SQLStore             *sqlstore.SQLStore      `inject:""`
+	ManagerV2            pluginsV2.PluginManager `inject:""`
 	pluginInstaller      plugins.PluginInstaller
 	log                  log.Logger
 	scanningErrors       []error
@@ -119,12 +124,31 @@ func (pm *PluginManager) Init() error {
 		}
 	}
 
-	err = pm.initExternalPlugins()
-	if err != nil {
-		return err
+	if pm.IsV2Enabled() {
+		return pm.ManagerV2.Start()
+	} else {
+		err = pm.initExternalPlugins()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (pm *PluginManager) IsV2Enabled() bool {
+	return !pm.ManagerV2.(registry.CanBeDisabled).IsDisabled()
+}
+
+func (pm *PluginManager) SupportsV2(pluginID string) bool {
+	return pm.ManagerV2.IsRegistered(pluginID)
+}
+
+func (pm *PluginManager) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+	if pm.IsV2Enabled() {
+		return pm.ManagerV2.QueryData(ctx, req)
 	}
 
-	return nil
+	return &backend.QueryDataResponse{}, nil
 }
 
 func (pm *PluginManager) initExternalPlugins() error {

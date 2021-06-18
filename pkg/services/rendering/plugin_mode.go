@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/grafana/pkg/plugins/backendplugin/pluginextensionv2"
+	"github.com/grafana/grafana-plugin-manager/pkg/plugins/backendplugin/pluginextensionv2"
 )
 
 func (rs *RenderingService) startPlugin(ctx context.Context) error {
