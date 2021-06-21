@@ -19,9 +19,8 @@ import (
 var _ pluginsV2.PluginManager = (*PluginManagerV2)(nil)
 
 type PluginManagerV2 struct {
-	Cfg                    *setting.Cfg                  `inject:""`
-	License                models.Licensing              `inject:""`
-	PluginRequestValidator models.PluginRequestValidator `inject:""`
+	Cfg     *setting.Cfg     `inject:""`
+	License models.Licensing `inject:""`
 
 	log     log.Logger
 	manager *managerV2.PluginManager
@@ -83,40 +82,40 @@ func (m *PluginManagerV2) IsDisabled() bool {
 	return !exists
 }
 
-func (m *PluginManagerV2) DataSource(pluginID string) {
-	panic("implement me")
+func (m *PluginManagerV2) DataSource(pluginID string) *pluginsV2.Plugin {
+	return m.manager.DataSource(pluginID)
 }
 
-func (m *PluginManagerV2) Panel(pluginID string) {
-	panic("implement me")
+func (m *PluginManagerV2) Panel(pluginID string) *pluginsV2.Plugin {
+	return m.manager.Panel(pluginID)
 }
 
-func (m *PluginManagerV2) App(pluginID string) {
-	panic("implement me")
+func (m *PluginManagerV2) App(pluginID string) *pluginsV2.Plugin {
+	return m.manager.App(pluginID)
 }
 
 func (m *PluginManagerV2) Renderer() *pluginsV2.Plugin {
-	panic("implement me")
+	return m.manager.Renderer()
 }
 
-func (m *PluginManagerV2) Plugins() {
-	panic("implement me")
+func (m *PluginManagerV2) Plugins() []*pluginsV2.Plugin {
+	return m.manager.Plugins()
 }
 
-func (m *PluginManagerV2) DataSources() {
-	panic("implement me")
+func (m *PluginManagerV2) DataSources() []*pluginsV2.Plugin {
+	return m.manager.DataSources()
 }
 
-func (m *PluginManagerV2) Panels() {
-	panic("implement me")
+func (m *PluginManagerV2) Panels() []*pluginsV2.Plugin {
+	return m.manager.Panels()
 }
 
-func (m *PluginManagerV2) Apps() {
-	panic("implement me")
+func (m *PluginManagerV2) Apps() []*pluginsV2.Plugin {
+	return m.manager.Apps()
 }
 
 func (m *PluginManagerV2) StaticRoutes() []*modelsV2.PluginStaticRoute {
-	panic("implement me")
+	return m.manager.StaticRoutes()
 }
 
 func (m *PluginManagerV2) Errors(pluginID string) {
