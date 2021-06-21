@@ -43,12 +43,24 @@ func (m *PluginManagerV2) Init() error {
 		return nil
 	}
 
+	var envVars = make(map[string]string)
+	if envProvider, ok := m.License.(models.LicenseEnvironment); ok {
+		for k, v := range envProvider.Environment() {
+			envVars[k] = v
+		}
+	}
+
 	m.log.Info("Plugin Manager V2 is starting...")
 	innerManager := managerV2.New(
 		m.Cfg.PluginsPath,
 		m.Cfg.BuildVersion,
 		m.Cfg.AppURL,
 		m.Cfg.AppSubURL,
+		managerV2.License{
+			HasLicense: m.License.HasLicense(),
+			Edition:    m.License.Edition(),
+			EnvVars:    envVars,
+		},
 		m.log,
 	)
 
@@ -59,20 +71,16 @@ func (m *PluginManagerV2) Init() error {
 }
 
 func (m *PluginManagerV2) Start() error {
+	if m.IsDisabled() {
+		return fmt.Errorf("cannot start Plugin Manager V2 as the feature toggle is disabled")
+	}
+
 	return m.manager.Init()
 }
 
 func (m *PluginManagerV2) IsDisabled() bool {
 	_, exists := m.Cfg.FeatureToggles["pluginManagerV2"]
 	return !exists
-}
-
-func (m *PluginManagerV2) StartV2() error {
-	if m.IsDisabled() {
-		return fmt.Errorf("cannot start Plugin Manager V2 as the feature toggle is disabled")
-	}
-
-	return m.manager.Init()
 }
 
 func (m *PluginManagerV2) DataSource(pluginID string) {
@@ -136,9 +144,10 @@ func (m *PluginManagerV2) IsRegistered(pluginID string) bool {
 }
 
 func (m *PluginManagerV2) Install(ctx context.Context, pluginID, version string) error {
-	panic("implement me")
+	return m.manager.Install(ctx, pluginID, version)
 }
 
 func (m *PluginManagerV2) Uninstall(ctx context.Context, pluginID string) error {
-	panic("implement me")
+	return m.manager.Uninstall(ctx, pluginID)
+
 }
