@@ -28,7 +28,7 @@ type gitHubLatest struct {
 
 func (pm *PluginManager) getAllExternalPluginSlugs() string {
 	var result []string
-	for _, plug := range pm.plugins {
+	for _, plug := range pm.Plugins() {
 		if plug.IsCorePlugin {
 			continue
 		}

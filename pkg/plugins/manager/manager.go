@@ -102,6 +102,11 @@ func (pm *PluginManager) Init() error {
 	pm.log = log.New("plugins")
 	plog = log.New("plugins")
 	pm.pluginScanningErrors = map[string]plugins.PluginError{}
+
+	if pm.IsV2Enabled() {
+		return pm.ManagerV2.Start()
+	}
+
 	pm.pluginInstaller = installer.New(false, pm.Cfg.BuildVersion, installerLog)
 
 	pm.log.Info("Starting plugin search")
@@ -124,13 +129,9 @@ func (pm *PluginManager) Init() error {
 		}
 	}
 
-	if pm.IsV2Enabled() {
-		return pm.ManagerV2.Start()
-	} else {
-		err = pm.initExternalPlugins()
-		if err != nil {
-			return err
-		}
+	err = pm.initExternalPlugins()
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -238,7 +239,13 @@ func (pm *PluginManager) GetDataSource(id string) *plugins.DataSourcePlugin {
 	pm.pluginsMu.RLock()
 	defer pm.pluginsMu.RUnlock()
 
-	return pm.dataSources[id]
+	ds := pm.dataSources[id]
+
+	if ds != nil {
+		return ds
+	}
+
+	return DataSourceFromV2(pm.ManagerV2.DataSource(id))
 }
 
 func (pm *PluginManager) DataSources() []*plugins.DataSourcePlugin {
@@ -248,6 +255,10 @@ func (pm *PluginManager) DataSources() []*plugins.DataSourcePlugin {
 	var rslt []*plugins.DataSourcePlugin
 	for _, ds := range pm.dataSources {
 		rslt = append(rslt, ds)
+	}
+
+	for _, ds := range pm.ManagerV2.DataSources() {
+		rslt = append(rslt, DataSourceFromV2(ds))
 	}
 
 	return rslt
@@ -283,6 +294,10 @@ func (pm *PluginManager) Plugins() []*plugins.PluginBase {
 		rslt = append(rslt, p)
 	}
 
+	for _, ds := range pm.ManagerV2.Plugins() {
+		rslt = append(rslt, FromV2(ds))
+	}
+
 	return rslt
 }
 
@@ -293,6 +308,10 @@ func (pm *PluginManager) Apps() []*plugins.AppPlugin {
 	var rslt []*plugins.AppPlugin
 	for _, p := range pm.apps {
 		rslt = append(rslt, p)
+	}
+
+	for _, ds := range pm.ManagerV2.Apps() {
+		rslt = append(rslt, AppFromV2(ds))
 	}
 
 	return rslt
@@ -307,6 +326,10 @@ func (pm *PluginManager) Panels() []*plugins.PanelPlugin {
 		rslt = append(rslt, p)
 	}
 
+	for _, ds := range pm.ManagerV2.Panels() {
+		rslt = append(rslt, PanelFromV2(ds))
+	}
+
 	return rslt
 }
 
@@ -314,14 +337,26 @@ func (pm *PluginManager) GetPlugin(id string) *plugins.PluginBase {
 	pm.pluginsMu.RLock()
 	defer pm.pluginsMu.RUnlock()
 
-	return pm.plugins[id]
+	p := pm.plugins[id]
+
+	if p != nil {
+		return p
+	}
+
+	return FromV2(pm.ManagerV2.Plugin(id))
 }
 
 func (pm *PluginManager) GetApp(id string) *plugins.AppPlugin {
 	pm.pluginsMu.RLock()
 	defer pm.pluginsMu.RUnlock()
 
-	return pm.apps[id]
+	app := pm.apps[id]
+
+	if app != nil {
+		return app
+	}
+
+	return AppFromV2(pm.ManagerV2.App(id))
 }
 
 func (pm *PluginManager) GrafanaLatestVersion() string {
@@ -709,8 +744,8 @@ func (pm *PluginManager) ScanningErrors() []plugins.PluginError {
 }
 
 func (pm *PluginManager) GetPluginMarkdown(pluginId string, name string) ([]byte, error) {
-	plug, exists := pm.plugins[pluginId]
-	if !exists {
+	plug := pm.GetPlugin(pluginId)
+	if plug == nil {
 		return nil, plugins.PluginNotFoundError{PluginID: pluginId}
 	}
 

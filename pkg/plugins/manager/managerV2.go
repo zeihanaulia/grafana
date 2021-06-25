@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	pluginsV2 "github.com/grafana/grafana-plugin-manager/pkg/plugins"
 	managerV2 "github.com/grafana/grafana-plugin-manager/pkg/plugins/manager"
@@ -49,9 +50,12 @@ func (m *PluginManagerV2) Init() error {
 		}
 	}
 
-	m.log.Info("Plugin Manager V2 is starting...")
-	innerManager := managerV2.New(
-		m.Cfg.PluginsPath,
+	m.manager = managerV2.New(
+		map[pluginsV2.PluginClass]string{
+			pluginsV2.Core:     filepath.Join(m.Cfg.StaticRootPath, "app/plugins"),
+			pluginsV2.Bundled:  m.Cfg.BundledPluginsPath,
+			pluginsV2.External: m.Cfg.PluginsPath,
+		},
 		m.Cfg.BuildVersion,
 		m.Cfg.AppURL,
 		m.Cfg.AppSubURL,
@@ -62,9 +66,6 @@ func (m *PluginManagerV2) Init() error {
 		},
 		m.log,
 	)
-
-	m.log.Info("Plugin Manager V2 has successfully started!")
-	m.manager = innerManager
 
 	return nil
 }
@@ -80,6 +81,10 @@ func (m *PluginManagerV2) Start() error {
 func (m *PluginManagerV2) IsDisabled() bool {
 	_, exists := m.Cfg.FeatureToggles["pluginManagerV2"]
 	return !exists
+}
+
+func (m *PluginManagerV2) Plugin(pluginID string) *pluginsV2.Plugin {
+	return m.manager.Plugin(pluginID)
 }
 
 func (m *PluginManagerV2) DataSource(pluginID string) *pluginsV2.Plugin {
