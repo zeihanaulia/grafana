@@ -4,7 +4,24 @@ async function sleep(ms: number) {
   });
 }
 
+type Note = 'A' | 'Bb' | 'B' | 'C' | 'Db' | 'D' | 'Eb' | 'E' | 'F' | 'Gb' | 'G' | 'Ab';
+
 const A4_FREQUENCY = 440;
+
+const SemitoneMapping: { [note: string]: number } = {
+  A: 0,
+  Bb: 1,
+  B: 2,
+  C: 3,
+  Dd: 4,
+  D: 5,
+  Eb: 6,
+  E: 7,
+  F: 8,
+  Gb: 9,
+  G: 10,
+  Ab: 11,
+};
 
 type Scale = number[];
 type ScaleType = 'major' | 'minor';
@@ -130,6 +147,12 @@ class Sonifier {
     }
 
     return sample;
+  }
+
+  async playNote(note: Note, duration: number) {
+    const semitones = SemitoneMapping[note as string];
+    const f = this.baseFrequency * Math.pow(2, semitones / 12);
+    return this._playFrequency(f, duration);
   }
 
   async playSeries(data: Tuple[]): Promise<void> {
