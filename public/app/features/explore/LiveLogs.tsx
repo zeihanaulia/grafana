@@ -3,9 +3,19 @@ import { css, cx } from '@emotion/css';
 import tinycolor from 'tinycolor2';
 
 import { LogMessageAnsi, Themeable, withTheme, getLogRowStyles, Icon, Button } from '@grafana/ui';
-import { GrafanaTheme, LogRowModel, TimeZone, dateTimeFormat } from '@grafana/data';
+import { GrafanaTheme, LogRowModel, TimeZone, dateTimeFormat, LogLevel } from '@grafana/data';
 
 import { ElapsedTime } from './ElapsedTime';
+
+const LevelMapper = {
+  [LogLevel.unknown]: 0,
+  [LogLevel.trace]: 1,
+  [LogLevel.debug]: 2,
+  [LogLevel.info]: 3,
+  [LogLevel.error]: 4,
+  [LogLevel.warning]: 5,
+  [LogLevel.critical]: 6,
+};
 
 const getStyles = (theme: GrafanaTheme) => ({
   logsRowsLive: css`
@@ -59,16 +69,20 @@ export interface Props extends Themeable {
 
 interface State {
   logRowsToRender?: LogRowModel[];
+  sonify: boolean;
 }
 
 class LiveLogs extends PureComponent<Props, State> {
   private liveEndDiv: HTMLDivElement | null = null;
   private scrollContainerRef = React.createRef<HTMLTableSectionElement>();
+  // HACK will run out of memory
+  private sonifiedLines: any = {};
 
   constructor(props: Props) {
     super(props);
     this.state = {
       logRowsToRender: props.logRows,
+      sonify: false,
     };
   }
 
@@ -84,6 +98,27 @@ class LiveLogs extends PureComponent<Props, State> {
       return null;
     }
   }
+
+  componentDidUpdate() {
+    if (this.state.sonify && !this.props.isPaused) {
+      const { logRowsToRender = [] } = this.state;
+      const linesToSonify = [];
+      const range = [LevelMapper[LogLevel.debug], LevelMapper[LogLevel.critical]];
+      for (const row of logRowsToRender) {
+        if (!this.sonifiedLines[row.uid]) {
+          if (LevelMapper[row.logLevel] > LevelMapper[LogLevel.info]) {
+            linesToSonify.push([row.timeEpochMs, LevelMapper[row.logLevel]]);
+          }
+        }
+        this.sonifiedLines[row.uid] = true;
+      }
+      console.log('sonify lines', linesToSonify, 'range', range);
+    }
+  }
+
+  onClickSonify = () => {
+    this.setState((state) => ({ sonify: !state.sonify }));
+  };
 
   /**
    * Handle pausing when user scrolls up so that we stop resetting his position to the bottom when new row arrives.
@@ -111,6 +146,7 @@ class LiveLogs extends PureComponent<Props, State> {
 
   render() {
     const { theme, timeZone, onPause, onResume, isPaused } = this.props;
+    const { sonify } = this.state;
     const styles = getStyles(theme);
     const { logsRow, logsRowLocalTime, logsRowMessage } = getLogRowStyles(theme);
 
@@ -151,6 +187,10 @@ class LiveLogs extends PureComponent<Props, State> {
           <Button variant="secondary" onClick={this.props.stopLive} className={styles.button}>
             <Icon name="square-shape" size="lg" type="mono" />
             &nbsp; Exit live mode
+          </Button>
+          <Button variant="secondary" onClick={this.onClickSonify} className={styles.button}>
+            <Icon name="bell" />
+            &nbsp; {sonify ? 'Stop sound' : 'Sonify log level'}
           </Button>
           {isPaused || (
             <span>
