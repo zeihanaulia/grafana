@@ -31,7 +31,7 @@ const Scales: { [name in 'major' | 'minor']: Scale } = {
   minor: [2, 1, 2, 2, 1, 3, 1, 2],
 };
 
-export type Tuple = [ts: number, val: number];
+type Tuple = [ts: number, val: number];
 type SamplingMethod = 'random' | 'systematic';
 
 type SonifierOptions = {
@@ -41,6 +41,7 @@ type SonifierOptions = {
   samplingMethod?: SamplingMethod;
   instrument?: OscillatorType;
   scale?: ScaleType;
+  volume?: number;
 };
 
 class Sonifier {
@@ -53,7 +54,10 @@ class Sonifier {
   scale: ScaleType;
 
   private _audioContext: AudioContext;
+  private _oscilator: OscillatorNode;
+  private _gainNode: GainNode;
   private _harmonicScaleBuckets: number[];
+  private _volume: number;
 
   constructor(options?: SonifierOptions) {
     this.isPlaying = false;
@@ -64,10 +68,21 @@ class Sonifier {
     this.instrument = options?.instrument || 'square';
     this.scale = options?.scale || 'major';
 
+    this._volume = options?.volume || 0.5;
     this._harmonicScaleBuckets = [];
-    this._audioContext = new AudioContext();
 
+    this._initAudio();
     this._initializeHarmonicBuckets();
+  }
+
+  private _initAudio(): void {
+    this._audioContext = new AudioContext();
+    this._oscilator = this._audioContext.createOscillator();
+    this._oscilator.type = this.instrument;
+    this._gainNode = this._audioContext.createGain();
+    this._gainNode.gain.value = this._volume;
+    this._oscilator.connect(this._gainNode);
+    this._gainNode.connect(this._audioContext.destination);
   }
 
   private _initializeHarmonicBuckets(): void {
@@ -81,20 +96,13 @@ class Sonifier {
   }
 
   private _playFrequency(f: number, t: number): void {
-    const oscilator = this._audioContext.createOscillator();
-    oscilator.type = this.instrument;
-    oscilator.frequency.value = f;
+    this._oscilator.frequency.value = f;
 
-    const gainNode = this._audioContext.createGain();
-
-    oscilator.connect(gainNode);
-    gainNode.connect(this._audioContext.destination);
-
-    oscilator.start(0);
+    this._oscilator.start(0);
     this.isPlaying = true;
 
     setTimeout(() => {
-      oscilator.stop();
+      this._oscilator.stop();
       this.isPlaying = false;
     }, t);
   }
@@ -149,6 +157,18 @@ class Sonifier {
     return sample;
   }
 
+  stop() {
+    if (this.isPlaying) {
+      this._oscilator.stop();
+      this.isPlaying = false;
+    }
+  }
+
+  setVolume(volume: number) {
+    this._volume = volume;
+    this._gainNode.gain.value = this._volume;
+  }
+
   async playNote(note: string, duration: number) {
     const semitones = SemitoneMapping[note as string];
     const f = this.baseFrequency * Math.pow(2, semitones / 12);
@@ -169,11 +189,14 @@ class Sonifier {
     }
   }
 
-  speak(text: string): Promise<void> {
-    const utter = new SpeechSynthesisUtterance(text);
-    speechSynthesis.speak(utter);
+  speak(text: string): Promise<SpeechSynthesisEvent> {
+    return new Promise((resolve, reject) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = resolve;
+      utterance.onerror = (event: SpeechSynthesisErrorEvent) => reject(event.error);
 
-    return Promise.resolve();
+      speechSynthesis.speak(utterance);
+    });
   }
 }
 
