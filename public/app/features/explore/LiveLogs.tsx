@@ -6,15 +6,16 @@ import { LogMessageAnsi, Themeable, withTheme, getLogRowStyles, Icon, Button, In
 import { GrafanaTheme, LogRowModel, TimeZone, dateTimeFormat, LogLevel } from '@grafana/data';
 
 import { ElapsedTime } from './ElapsedTime';
+import Sonifier from 'app/core/services/Sonifier';
 
 const LevelMapper = {
-  [LogLevel.unknown]: 0,
-  [LogLevel.trace]: 1,
-  [LogLevel.debug]: 2,
-  [LogLevel.info]: 3,
-  [LogLevel.error]: 4,
-  [LogLevel.warning]: 5,
-  [LogLevel.critical]: 6,
+  [LogLevel.unknown]: 'A',
+  [LogLevel.trace]: 'A',
+  [LogLevel.debug]: 'A',
+  [LogLevel.info]: 'A',
+  [LogLevel.error]: 'C',
+  [LogLevel.warning]: 'E',
+  [LogLevel.critical]: 'G',
 };
 
 const getStyles = (theme: GrafanaTheme) => ({
@@ -79,6 +80,7 @@ class LiveLogs extends PureComponent<Props, State> {
   private scrollContainerRef = React.createRef<HTMLTableSectionElement>();
   // HACK will run out of memory
   private sonifiedLines: any = {};
+  private sonifier: Sonifier;
 
   constructor(props: Props) {
     super(props);
@@ -88,6 +90,7 @@ class LiveLogs extends PureComponent<Props, State> {
       sonifyValue: false,
       sonifyValueExpression: '',
     };
+    this.sonifier = new Sonifier();
   }
 
   static getDerivedStateFromProps(nextProps: Props, state: State) {
@@ -106,17 +109,14 @@ class LiveLogs extends PureComponent<Props, State> {
   componentDidUpdate() {
     if (this.state.sonify && !this.props.isPaused) {
       const { logRowsToRender = [] } = this.state;
-      const linesToSonify = [];
-      const range = [LevelMapper[LogLevel.debug], LevelMapper[LogLevel.critical]];
       for (const row of logRowsToRender) {
         if (!this.sonifiedLines[row.uid]) {
           if (LevelMapper[row.logLevel] > LevelMapper[LogLevel.info]) {
-            linesToSonify.push([row.timeEpochMs, LevelMapper[row.logLevel]]);
+            this.sonifier.playNote(LevelMapper[row.logLevel], 200);
           }
         }
         this.sonifiedLines[row.uid] = true;
       }
-      console.log('sonify lines', linesToSonify, 'range', range);
     }
   }
 

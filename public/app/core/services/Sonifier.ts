@@ -4,7 +4,7 @@ async function sleep(ms: number) {
   });
 }
 
-type Note = 'A' | 'Bb' | 'B' | 'C' | 'Db' | 'D' | 'Eb' | 'E' | 'F' | 'Gb' | 'G' | 'Ab';
+export type Note = 'A' | 'Bb' | 'B' | 'C' | 'Db' | 'D' | 'Eb' | 'E' | 'F' | 'Gb' | 'G' | 'Ab';
 
 const A4_FREQUENCY = 440;
 
@@ -31,7 +31,7 @@ const Scales: { [name in 'major' | 'minor']: Scale } = {
   minor: [2, 1, 2, 2, 1, 3, 1, 2],
 };
 
-type Tuple = [ts: number, val: number];
+export type Tuple = [ts: number, val: number];
 type SamplingMethod = 'random' | 'systematic';
 
 type SonifierOptions = {
@@ -55,14 +55,14 @@ class Sonifier {
   private _audioContext: AudioContext;
   private _harmonicScaleBuckets: number[];
 
-  constructor(options: SonifierOptions) {
+  constructor(options?: SonifierOptions) {
     this.isPlaying = false;
-    this.baseFrequency = options.baseFrequency || A4_FREQUENCY;
-    this.scales = options.scales || 3;
-    this.maxSamples = options.maxSamples || 50;
-    this.samplingMethod = options.samplingMethod || 'systematic';
-    this.instrument = options.instrument || 'square';
-    this.scale = options.scale || 'major';
+    this.baseFrequency = options?.baseFrequency || A4_FREQUENCY;
+    this.scales = options?.scales || 3;
+    this.maxSamples = options?.maxSamples || 50;
+    this.samplingMethod = options?.samplingMethod || 'systematic';
+    this.instrument = options?.instrument || 'square';
+    this.scale = options?.scale || 'major';
 
     this._harmonicScaleBuckets = [];
     this._audioContext = new AudioContext();
@@ -149,7 +149,7 @@ class Sonifier {
     return sample;
   }
 
-  async playNote(note: Note, duration: number) {
+  async playNote(note: string, duration: number) {
     const semitones = SemitoneMapping[note as string];
     const f = this.baseFrequency * Math.pow(2, semitones / 12);
     return this._playFrequency(f, duration);
