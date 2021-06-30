@@ -1,8 +1,8 @@
-import React, { PureComponent } from 'react';
+import React, { ChangeEvent, PureComponent } from 'react';
 import { css, cx } from '@emotion/css';
 import tinycolor from 'tinycolor2';
 
-import { LogMessageAnsi, Themeable, withTheme, getLogRowStyles, Icon, Button } from '@grafana/ui';
+import { LogMessageAnsi, Themeable, withTheme, getLogRowStyles, Icon, Button, Input } from '@grafana/ui';
 import { GrafanaTheme, LogRowModel, TimeZone, dateTimeFormat, LogLevel } from '@grafana/data';
 
 import { ElapsedTime } from './ElapsedTime';
@@ -70,6 +70,8 @@ export interface Props extends Themeable {
 interface State {
   logRowsToRender?: LogRowModel[];
   sonify: boolean;
+  sonifyValue: boolean;
+  sonifyValueExpression: string;
 }
 
 class LiveLogs extends PureComponent<Props, State> {
@@ -83,6 +85,8 @@ class LiveLogs extends PureComponent<Props, State> {
     this.state = {
       logRowsToRender: props.logRows,
       sonify: false,
+      sonifyValue: false,
+      sonifyValueExpression: '',
     };
   }
 
@@ -116,8 +120,16 @@ class LiveLogs extends PureComponent<Props, State> {
     }
   }
 
+  onChangeValueExpression = (event: ChangeEvent<HTMLInputElement>) => {
+    this.setState({ sonifyValueExpression: event.target.value });
+  };
+
   onClickSonify = () => {
     this.setState((state) => ({ sonify: !state.sonify }));
+  };
+
+  onClickSonifyValue = () => {
+    this.setState((state) => ({ sonifyValue: !state.sonifyValue }));
   };
 
   /**
@@ -146,7 +158,7 @@ class LiveLogs extends PureComponent<Props, State> {
 
   render() {
     const { theme, timeZone, onPause, onResume, isPaused } = this.props;
-    const { sonify } = this.state;
+    const { sonify, sonifyValue, sonifyValueExpression } = this.state;
     const styles = getStyles(theme);
     const { logsRow, logsRowLocalTime, logsRowMessage } = getLogRowStyles(theme);
 
@@ -190,8 +202,20 @@ class LiveLogs extends PureComponent<Props, State> {
           </Button>
           <Button variant="secondary" onClick={this.onClickSonify} className={styles.button}>
             <Icon name="bell" />
-            &nbsp; {sonify ? 'Stop sound' : 'Sonify log level'}
+            &nbsp; {sonify ? 'Stop level sound' : 'Sonify log level'}
           </Button>
+          <Button variant="secondary" onClick={this.onClickSonifyValue} className={styles.button}>
+            <Icon name="bell" />
+            &nbsp; {sonifyValue ? 'Stop value sound' : 'Sonify value'}
+          </Button>
+          {sonifyValue && (
+            <Input
+              width={120}
+              placeholder="Example: duration=(\d+)ms"
+              onChange={this.onChangeValueExpression}
+              value={sonifyValueExpression}
+            />
+          )}
           {isPaused || (
             <span>
               Last line received: <ElapsedTime resetKey={this.props.logRows} humanize={true} /> ago
