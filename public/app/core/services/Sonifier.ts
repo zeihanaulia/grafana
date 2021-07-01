@@ -44,7 +44,7 @@ type SonifierOptions = {
   volume?: number;
 };
 
-class Sonifier {
+export class Sonifier {
   isPlaying: boolean;
   baseFrequency: number;
   scales: number;
@@ -54,10 +54,10 @@ class Sonifier {
   scale: ScaleType;
 
   private _audioContext: AudioContext;
-  private _oscilator: OscillatorNode;
-  private _gainNode: GainNode;
   private _harmonicScaleBuckets: number[];
   private _volume: number;
+  private _paused: boolean;
+  private _playQueue: Tuple[];
 
   constructor(options?: SonifierOptions) {
     this.isPlaying = false;
@@ -68,21 +68,13 @@ class Sonifier {
     this.instrument = options?.instrument || 'square';
     this.scale = options?.scale || 'major';
 
-    this._volume = options?.volume || 0.5;
+    this._volume = options?.volume || 0.03;
     this._harmonicScaleBuckets = [];
-
-    this._initAudio();
-    this._initializeHarmonicBuckets();
-  }
-
-  private _initAudio(): void {
+    this._playQueue = [];
+    this._paused = false;
     this._audioContext = new AudioContext();
-    this._oscilator = this._audioContext.createOscillator();
-    this._oscilator.type = this.instrument;
-    this._gainNode = this._audioContext.createGain();
-    this._gainNode.gain.value = this._volume;
-    this._oscilator.connect(this._gainNode);
-    this._gainNode.connect(this._audioContext.destination);
+
+    this._initializeHarmonicBuckets();
   }
 
   private _initializeHarmonicBuckets(): void {
@@ -95,26 +87,47 @@ class Sonifier {
     }
   }
 
-  private _playFrequency(f: number, t: number): void {
-    this._oscilator.frequency.value = f;
+  private _advancePlayQueue(): void {
+    if (this._playQueue.length === 0) {
+      return;
+    }
+    const [t, f] = this._playQueue.shift() as Tuple;
 
-    this._oscilator.start(0);
+    const oscilator = this._audioContext.createOscillator();
+    oscilator.type = this.instrument;
+    oscilator.onended = () => {
+      if (this._playQueue.length > 0 && !this._paused) {
+        this._advancePlayQueue();
+      } else {
+        this.isPlaying = false;
+      }
+    };
+    const gainNode = this._audioContext.createGain();
+    gainNode.gain.value = this._volume;
+    oscilator.connect(gainNode);
+    gainNode.connect(this._audioContext.destination);
+    oscilator.frequency.value = f;
+
+    oscilator.start(this._audioContext.currentTime);
+    oscilator.stop(this._audioContext.currentTime + t * 0.001);
     this.isPlaying = true;
-
-    setTimeout(() => {
-      this._oscilator.stop();
-      this.isPlaying = false;
-    }, t);
   }
 
-  private _harmonizeFrequencies(data: Tuple[]): number[] {
+  private _enqueueFrequency(f: number, t: number): void {
+    this._playQueue.push([t, f]);
+    if (!this.isPlaying) {
+      this._advancePlayQueue();
+    }
+  }
+
+  private _harmonizeFrequencies(data: Tuple[], limits?: { min: number; max: number }): number[] {
     let harmonizedData: Tuple[] = [];
 
     const sortedByValue = [...data].sort((a, b) => a[1] - b[1]);
     const maxF = this._harmonicScaleBuckets[this._harmonicScaleBuckets.length - 1];
 
-    let min = sortedByValue[0][1],
-      max = sortedByValue[sortedByValue.length - 1][1];
+    let min = limits?.min || sortedByValue[0][1];
+    let max = limits?.max || sortedByValue[sortedByValue.length - 1][1];
 
     let bucketIndex = 1;
     for (let i = 0; i < sortedByValue.length; i++) {
@@ -157,35 +170,52 @@ class Sonifier {
     return sample;
   }
 
+  getInstruments(): OscillatorType[] {
+    return ['sine', 'square', 'triangle', 'sawtooth'];
+  }
+
+  setInstrument(instrument: OscillatorType) {
+    this.instrument = instrument;
+  }
+
+  pause() {
+    this._paused = true;
+  }
+
   stop() {
-    if (this.isPlaying) {
-      this._oscilator.stop();
-      this.isPlaying = false;
-    }
+    this.pause();
+    this._playQueue = [];
+  }
+
+  play() {
+    this._paused = false;
+    this._advancePlayQueue();
   }
 
   setVolume(volume: number) {
     this._volume = volume;
-    this._gainNode.gain.value = this._volume;
   }
 
-  async playNote(note: string, duration: number) {
+  getVolume(): number {
+    return this._volume;
+  }
+
+  playNote(note: string, duration: number): void {
     const semitones = SemitoneMapping[note as string];
     const f = this.baseFrequency * Math.pow(2, semitones / 12);
-    return this._playFrequency(f, duration);
+    this._enqueueFrequency(f, duration);
   }
 
-  async playSeries(data: Tuple[]): Promise<void> {
+  playSeries(data: Tuple[], limits?: { min: number; max: number }): void {
     if (data.length === 0) {
       return;
     }
 
     const sampledData = this._sample(data);
-    const harmonizedData = this._harmonizeFrequencies(sampledData);
+    const harmonizedData = this._harmonizeFrequencies(sampledData, limits);
 
     for (let f of harmonizedData) {
-      await sleep(220);
-      this._playFrequency(f, 200);
+      this._enqueueFrequency(f, 200);
     }
   }
 
