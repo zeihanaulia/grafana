@@ -173,6 +173,10 @@ export class Sonifier {
     return ['sine', 'square', 'triangle', 'sawtooth'];
   }
 
+  getInstrument(): OscillatorType {
+    return this.instrument;
+  }
+
   setInstrument(instrument: OscillatorType) {
     this.instrument = instrument;
   }
