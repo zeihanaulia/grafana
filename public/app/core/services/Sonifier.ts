@@ -230,4 +230,7 @@ export class Sonifier {
   }
 }
 
-export default Sonifier;
+// Singleton
+export const sonifier = new Sonifier();
+export const getSonifier = (): Sonifier => sonifier;
+export default getSonifier;
