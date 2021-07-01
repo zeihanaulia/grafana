@@ -19,6 +19,7 @@ const SemitoneMapping: { [note: string]: number } = {
 
 type Scale = number[];
 type ScaleType = 'major' | 'minor';
+type ProcessFn = (() => void) | undefined;
 
 const Scales: { [name in 'major' | 'minor']: Scale } = {
   major: [2, 2, 1, 2, 2, 2, 1, 2],
@@ -51,7 +52,7 @@ export class Sonifier {
   private _harmonicScaleBuckets: number[];
   private _volume: number;
   private _paused: boolean;
-  private _playQueue: Tuple[];
+  private _playQueue: Array<{ data: Tuple; onProcess: ProcessFn }>;
 
   constructor(options?: SonifierOptions) {
     this.isPlaying = false;
@@ -85,11 +86,15 @@ export class Sonifier {
     if (this._playQueue.length === 0) {
       return;
     }
-    const [t, f] = this._playQueue.shift() as Tuple;
+    const {
+      data: [t, f],
+      onProcess,
+    } = this._playQueue.shift() as { data: Tuple; onProcess: ProcessFn };
 
     const oscilator = this._audioContext.createOscillator();
     oscilator.type = this.instrument;
     oscilator.onended = () => {
+      onProcess && onProcess();
       if (this._playQueue.length > 0 && !this._paused) {
         this._advancePlayQueue();
       } else {
@@ -107,8 +112,8 @@ export class Sonifier {
     this.isPlaying = true;
   }
 
-  private _enqueueFrequency(f: number, t: number): void {
-    this._playQueue.push([t, f]);
+  private _enqueueFrequency(f: number, t: number, onProcess?: () => void): void {
+    this._playQueue.push({ data: [t, f], onProcess });
     if (!this.isPlaying) {
       this._advancePlayQueue();
     }
@@ -194,23 +199,31 @@ export class Sonifier {
     return this._volume;
   }
 
-  playNote(note: string, duration: number): void {
-    const semitones = SemitoneMapping[note as string];
-    const f = this.baseFrequency * Math.pow(2, semitones / 12);
-    this._enqueueFrequency(f, duration);
+  playNote(note: string, duration: number): Promise<void> {
+    return new Promise((resolve) => {
+      const semitones = SemitoneMapping[note as string];
+      const f = this.baseFrequency * Math.pow(2, semitones / 12);
+      this._enqueueFrequency(f, duration, resolve);
+    });
   }
 
-  playSeries(data: Tuple[], limits?: { min: number; max: number }): void {
-    if (data.length === 0) {
-      return;
-    }
+  playSeries(data: Tuple[], limits?: { min: number; max: number }): Promise<void> {
+    return new Promise((resolve) => {
+      if (data.length === 0) {
+        return;
+      }
 
-    const sampledData = this._sample(data);
-    const harmonizedData = this._harmonizeFrequencies(sampledData, limits);
+      const sampledData = this._sample(data);
+      const harmonizedData = this._harmonizeFrequencies(sampledData, limits);
 
-    for (let f of harmonizedData) {
-      this._enqueueFrequency(f, 200);
-    }
+      for (let i = 0; i < harmonizedData.length; ++i) {
+        if (i === harmonizedData.length - 1) {
+          this._enqueueFrequency(harmonizedData[i], 200, resolve);
+        } else {
+          this._enqueueFrequency(harmonizedData[i], 200);
+        }
+      }
+    });
   }
 
   speak(text: string): Promise<SpeechSynthesisEvent> {
