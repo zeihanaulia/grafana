@@ -1,9 +1,3 @@
-async function sleep(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 export type Note = 'A' | 'Bb' | 'B' | 'C' | 'Db' | 'D' | 'Eb' | 'E' | 'F' | 'Gb' | 'G' | 'Ab';
 
 const A4_FREQUENCY = 440;
@@ -31,7 +25,7 @@ const Scales: { [name in 'major' | 'minor']: Scale } = {
   minor: [2, 1, 2, 2, 1, 3, 1, 2],
 };
 
-type Tuple = [ts: number, val: number];
+export type Tuple = [ts: number, val: number];
 type SamplingMethod = 'random' | 'systematic';
 
 type SonifierOptions = {
@@ -134,7 +128,7 @@ export class Sonifier {
       const mappedFrequency =
         this.baseFrequency + ((sortedByValue[i][1] - min) / (max - min)) * (maxF - this.baseFrequency);
 
-      if (mappedFrequency >= this._harmonicScaleBuckets[bucketIndex]) {
+      if (mappedFrequency > this._harmonicScaleBuckets[bucketIndex]) {
         bucketIndex++;
       }
       harmonizedData.push([sortedByValue[i][0], this._harmonicScaleBuckets[bucketIndex]]);
