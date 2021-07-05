@@ -18,7 +18,7 @@ const SemitoneMapping: { [note: string]: number } = {
 };
 
 type Scale = number[];
-type ScaleType = 'major' | 'minor';
+type ScaleType = 'major' | 'minor' | 'chromatic';
 type ProcessFn = (() => void) | undefined;
 type SampleFrame<T> = {
   data: T;
@@ -30,7 +30,8 @@ type PlaySeriesOptions = {
   onPointProcess?: (pointIndex: number) => void;
 };
 
-const Scales: { [name in 'major' | 'minor']: Scale } = {
+const Scales: { [name in 'major' | 'minor' | 'chromatic']: Scale } = {
+  chromatic: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
   major: [2, 2, 1, 2, 2, 2, 1, 2],
   minor: [2, 1, 2, 2, 1, 3, 1, 2],
 };
@@ -46,6 +47,7 @@ type SonifierOptions = {
   instrument?: OscillatorType;
   scale?: ScaleType;
   volume?: number;
+  fixedDeltaTime: boolean;
 };
 
 export class Sonifier {
@@ -58,37 +60,25 @@ export class Sonifier {
   scale: ScaleType;
 
   private _audioContext: AudioContext;
-  private _harmonicScaleBuckets: number[];
   private _volume: number;
   private _paused: boolean;
+  private _fixedDt: boolean;
   private _playQueue: Array<{ data: Tuple; onProcess: ProcessFn }>;
 
   constructor(options?: SonifierOptions) {
     this.isPlaying = false;
     this.baseFrequency = options?.baseFrequency || A4_FREQUENCY;
-    this.scales = options?.scales || 3;
+    this.scales = options?.scales || 1;
     this.maxSamples = options?.maxSamples || 50;
     this.samplingMethod = options?.samplingMethod || 'systematic';
     this.instrument = options?.instrument || 'square';
-    this.scale = options?.scale || 'major';
+    this.scale = options?.scale || 'chromatic';
 
     this._volume = options?.volume || 0.03;
-    this._harmonicScaleBuckets = [];
+    this._fixedDt = options?.fixedDeltaTime || false;
     this._playQueue = [];
     this._paused = false;
     this._audioContext = new AudioContext();
-
-    this._initializeHarmonicBuckets();
-  }
-
-  private _initializeHarmonicBuckets(): void {
-    let distance = 0;
-    for (let i = 0; i < this.scales; i++) {
-      for (let semitones of Scales[this.scale]) {
-        this._harmonicScaleBuckets.push(this.baseFrequency * Math.pow(2, distance / 12));
-        distance += semitones;
-      }
-    }
   }
 
   private _advancePlayQueue(): void {
@@ -116,13 +106,12 @@ export class Sonifier {
     gainNode.connect(this._audioContext.destination);
     oscilator.frequency.value = f;
 
-    oscilator.start(this._audioContext.currentTime);
-    oscilator.stop(this._audioContext.currentTime + t * 0.001);
+    oscilator.start(t);
+    oscilator.stop(t + 0.2);
     this.isPlaying = true;
   }
 
   private _enqueueFrequency(f: number, t: number, onProcess?: () => void): void {
-    console.log(t, f);
     this._playQueue.push({ data: [t, f], onProcess });
     if (!this.isPlaying) {
       this._advancePlayQueue();
@@ -135,24 +124,31 @@ export class Sonifier {
   ): Array<SampleFrame<Tuple>> {
     let harmonizedData: Array<SampleFrame<Tuple>> = [];
 
-    const sortedByValue = data.sort((a, b) => a.data[1] - b.data[1]);
-    const maxF = this._harmonicScaleBuckets[this._harmonicScaleBuckets.length - 1];
+    const sortedByValue = [...data].sort((a, b) => a.data[1] - b.data[1]);
 
     let min = options?.min || sortedByValue[0].data[1];
     let max = options?.max || sortedByValue[sortedByValue.length - 1].data[1];
 
-    let bucketIndex = 1;
-    for (let i = 0; i < sortedByValue.length; i++) {
-      const mappedFrequency =
-        this.baseFrequency + ((sortedByValue[i].data[1] - min) / (max - min)) * (maxF - this.baseFrequency);
+    let minT = data[0].data[0];
+    let maxT = data[data.length - 1].data[0];
 
-      if (mappedFrequency > this._harmonicScaleBuckets[bucketIndex]) {
-        bucketIndex++;
+    let maxHarmonicIndex = this.scales * Scales[this.scale].length;
+
+    let dt = 1 / data.length;
+
+    for (let i = 0; i < sortedByValue.length; i++) {
+      const mappedIndex = Math.floor(((sortedByValue[i].data[1] - min) / (max - min)) * maxHarmonicIndex);
+
+      const f = this.baseFrequency * Math.pow(2, mappedIndex / 12);
+      if (!this._fixedDt) {
+        dt = (sortedByValue[i].data[0] - minT) / (maxT - minT);
       }
+
+      console.log(mappedIndex, f, sortedByValue[i].data[1]);
 
       harmonizedData.push({
         index: sortedByValue[i].index,
-        data: [sortedByValue[i].data[0], this._harmonicScaleBuckets[bucketIndex]],
+        data: [dt, f],
       });
     }
 
@@ -243,22 +239,31 @@ export class Sonifier {
   }
 
   playSeries(data: Tuple[], options?: PlaySeriesOptions): Promise<void> {
+    console.log(data);
     return new Promise((resolve) => {
       if (data.length === 0) {
         return;
       }
 
       const sampledData = this._sample(data);
+      console.log('Sample:', sampledData);
       const harmonizedData = this._harmonizeFrequencies(sampledData, options);
+      console.log('Harmon:', harmonizedData);
+
+      let start = this._audioContext.currentTime + 0.02;
+
+      const duration = harmonizedData.length * 0.5;
 
       for (let i = 0; i < harmonizedData.length; ++i) {
+        const [dt, f] = harmonizedData[i].data;
+
         if (i === harmonizedData.length - 1) {
-          this._enqueueFrequency(harmonizedData[i].data[1], 200, () => {
+          this._enqueueFrequency(f, start + dt * duration, () => {
             options?.onPointProcess?.(harmonizedData[i].index);
             resolve();
           });
         } else {
-          this._enqueueFrequency(harmonizedData[i].data[1], 200, () => {
+          this._enqueueFrequency(f, start + dt * duration, () => {
             options?.onPointProcess?.(harmonizedData[i].index);
           });
         }
