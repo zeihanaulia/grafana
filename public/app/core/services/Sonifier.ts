@@ -63,7 +63,7 @@ export class Sonifier {
   private _volume: number;
   private _paused: boolean;
   private _fixedDt: boolean;
-  private _playQueue: Array<{ data: Tuple; onProcess: ProcessFn }>;
+  private _playQueue: Array<{ data: Tuple; duration: number; onProcess: ProcessFn }>;
 
   constructor(options?: SonifierOptions) {
     this.isPlaying = false;
@@ -87,8 +87,9 @@ export class Sonifier {
     }
     const {
       data: [t, f],
+      duration = 200,
       onProcess,
-    } = this._playQueue.shift() as { data: Tuple; onProcess: ProcessFn };
+    } = this._playQueue.shift() as { data: Tuple; duration: number; onProcess: ProcessFn };
 
     const oscilator = this._audioContext.createOscillator();
     oscilator.type = this.instrument;
@@ -107,12 +108,12 @@ export class Sonifier {
     oscilator.frequency.value = f;
 
     oscilator.start(t);
-    oscilator.stop(t + 0.2);
+    oscilator.stop(t + duration * 0.001);
     this.isPlaying = true;
   }
 
-  private _enqueueFrequency(f: number, t: number, onProcess?: () => void): void {
-    this._playQueue.push({ data: [t, f], onProcess });
+  private _enqueueNote({ f, ts, duration }: { f: number; ts: number; duration: number }, onProcess?: () => void): void {
+    this._playQueue.push({ data: [ts, f], duration, onProcess });
     if (!this.isPlaying) {
       this._advancePlayQueue();
     }
@@ -143,8 +144,6 @@ export class Sonifier {
       if (!this._fixedDt) {
         dt = (sortedByValue[i].data[0] - minT) / (maxT - minT);
       }
-
-      console.log(mappedIndex, f, sortedByValue[i].data[1]);
 
       harmonizedData.push({
         index: sortedByValue[i].index,
@@ -234,7 +233,8 @@ export class Sonifier {
     return new Promise((resolve) => {
       const semitones = SemitoneMapping[note as string];
       const f = this.baseFrequency * Math.pow(2, semitones / 12);
-      this._enqueueFrequency(f, duration, resolve);
+      let start = this._audioContext.currentTime + 0.02;
+      this._enqueueNote({ f, ts: start, duration }, resolve);
     });
   }
 
@@ -255,14 +255,28 @@ export class Sonifier {
         const [dt, f] = harmonizedData[i].data;
 
         if (i === harmonizedData.length - 1) {
-          this._enqueueFrequency(f, start + dt * duration, () => {
-            options?.onPointProcess?.(harmonizedData[i].index);
-            resolve();
-          });
+          this._enqueueNote(
+            {
+              f,
+              ts: start + dt * duration,
+              duration: 200,
+            },
+            () => {
+              options?.onPointProcess?.(harmonizedData[i].index);
+              resolve();
+            }
+          );
         } else {
-          this._enqueueFrequency(f, start + dt * duration, () => {
-            options?.onPointProcess?.(harmonizedData[i].index);
-          });
+          this._enqueueNote(
+            {
+              f,
+              ts: start + dt * duration,
+              duration: 200,
+            },
+            () => {
+              options?.onPointProcess?.(harmonizedData[i].index);
+            }
+          );
         }
       }
     });
