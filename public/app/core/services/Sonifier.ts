@@ -186,7 +186,7 @@ export class Sonifier {
       }
 
       sample.push({
-        data: data[index],
+        data: data[index][1] !== null ? data[index] : ([data[index][0], 0] as Tuple),
         index,
       });
 
@@ -239,16 +239,13 @@ export class Sonifier {
   }
 
   playSeries(data: Tuple[], options?: PlaySeriesOptions): Promise<void> {
-    console.log(data);
     return new Promise((resolve) => {
       if (data.length === 0) {
         return;
       }
 
       const sampledData = this._sample(data);
-      console.log('Sample:', sampledData);
       const harmonizedData = this._harmonizeFrequencies(sampledData, options);
-      console.log('Harmon:', harmonizedData);
 
       let start = this._audioContext.currentTime + 0.02;
 
