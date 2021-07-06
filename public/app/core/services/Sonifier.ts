@@ -31,7 +31,7 @@ type PlaySeriesOptions = {
 };
 
 const Scales: { [name in 'major' | 'minor' | 'chromatic']: Scale } = {
-  chromatic: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  chromatic: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
   major: [2, 2, 1, 2, 2, 2, 1, 2],
   minor: [2, 1, 2, 2, 1, 3, 1, 2],
 };
@@ -68,7 +68,7 @@ export class Sonifier {
   constructor(options?: SonifierOptions) {
     this.isPlaying = false;
     this.baseFrequency = options?.baseFrequency || A4_FREQUENCY;
-    this.scales = options?.scales || 1;
+    this.scales = options?.scales || 3;
     this.maxSamples = options?.maxSamples || 50;
     this.samplingMethod = options?.samplingMethod || 'systematic';
     this.instrument = options?.instrument || 'square';
@@ -252,7 +252,7 @@ export class Sonifier {
 
       let start = this._audioContext.currentTime + 0.02;
 
-      const duration = harmonizedData.length * 0.5;
+      const duration = harmonizedData.length * 0.4;
 
       for (let i = 0; i < harmonizedData.length; ++i) {
         const [dt, f] = harmonizedData[i].data;
