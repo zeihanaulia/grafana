@@ -1,5 +1,5 @@
 import { FieldConfigEditorProps, FieldConfigPropertyItem, FieldConfigEditorConfig } from '../types/fieldOverrides';
-import { OptionsUIRegistryBuilder } from '../types/OptionsUIRegistryBuilder';
+import { OptionsEditorItem, OptionsUIRegistryBuilder } from '../types/OptionsUIRegistryBuilder';
 import { PanelOptionsEditorConfig, PanelOptionsEditorItem } from '../types/panel';
 import {
   numberOverrideProcessor,
@@ -17,6 +17,7 @@ import {
   unitOverrideProcessor,
   FieldNamePickerConfigSettings,
 } from '../field';
+import { Registry } from './Registry';
 
 /**
  * Fluent API for declarative creation of field config option editors
@@ -244,6 +245,31 @@ export class PanelOptionsEditorBuilder<TOptions> extends OptionsUIRegistryBuilde
       ...config,
       id: config.path,
       editor: standardEditorsRegistry.get('field-name').editor as any,
+    });
+  }
+
+  private parent?: PanelOptionsEditorBuilder<any>;
+  private rebuildPrefix: Set<string> = new Set<string>();
+  private nested?: Array<PanelOptionsEditorBuilder<any>>;
+
+  addNestedOptions(prefix: string, builder: (builder: this) => void, rebuild: string[]): this {
+    // Everything scoped
+    const sub = new PanelOptionsEditorBuilder();
+    builder(sub as any);
+    const processed = sub.properties.map((v) => ({
+      ...v,
+      path: `${prefix}.${v.path}`,
+      id: `${prefix}.${v.id}`,
+    }));
+    console.log('XXXX', processed);
+
+    return this;
+  }
+
+  getRegistry() {
+    // TODO: check dirty state and reinit
+    return new Registry(() => {
+      return this.properties;
     });
   }
 }

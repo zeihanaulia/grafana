@@ -52,4 +52,11 @@ export interface OptionEditorConfig<TOptions, TSettings = any, TValue = any> {
    * Function that enables configuration of when option editor should be shown based on current panel option properties.
    */
   showIf?: (currentOptions: TOptions, data?: DataFrame[]) => boolean | undefined;
+
+  /**
+   * Used for PanelOptionsBuilder -- when this node changes, the whole plugin should be reinitalized
+   *
+   * @internal alpha
+   */
+  dirtyOnChange?: boolean;
 }

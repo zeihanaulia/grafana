@@ -39,6 +39,8 @@ export function getVizualizationOptions(props: OptionPaneRenderProps): OptionsPa
     }));
   };
 
+  console.log('FILL PLUGIN OPTIONS', plugin);
+
   // Load the options into categories
   fillOptionsPaneItems(
     plugin.optionEditors.list(),

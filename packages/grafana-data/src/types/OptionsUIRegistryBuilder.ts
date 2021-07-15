@@ -80,7 +80,7 @@ export abstract class OptionsUIRegistryBuilder<
   TEditorProps,
   T extends OptionsEditorItem<TOptions, any, TEditorProps, any>
 > implements OptionsUIRegistryBuilderAPI<TOptions, TEditorProps, T> {
-  private properties: T[] = [];
+  protected properties: T[] = [];
 
   addCustomEditor<TSettings, TValue>(config: T & OptionsEditorItem<TOptions, TSettings, TEditorProps, TValue>): this {
     this.properties.push(config);
