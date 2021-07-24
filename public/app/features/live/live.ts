@@ -223,8 +223,33 @@ export class CentrifugeSrv implements GrafanaLiveSrv {
       let state = LoadingState.Streaming;
       let last = perf.last;
       let lastWidth = -1;
+      let lastData: DataFrame[] = [];
 
+      // Clamp the broadcast rate if the perf is low
+      const broadcast = (data: DataFrame[]) => {
+        const elapsed = perf.last - last;
+        if (elapsed > 1000 || perf.ok) {
+          subscriber.next({ state, data, key });
+          last = perf.last;
+        }
+        lastData = data;
+      };
+
+      // Update the graph periodically regardless how often messages are recieved
+      let processed = false;
+      let refresh = 0;
+      if (options.autoRefresh) {
+        refresh = (setInterval(() => {
+          if (!processed) {
+            broadcast(lastData);
+          }
+          processed = false;
+        }, options.autoRefresh) as unknown) as number;
+      }
+
+      // Actually process messages as we get them
       const process = (msg: DataFrameJSON) => {
+        processed = true;
         if (!data) {
           data = new StreamingDataFrame(msg, options.buffer);
         } else {
@@ -248,12 +273,9 @@ export class CentrifugeSrv implements GrafanaLiveSrv {
           }
         }
 
-        const elapsed = perf.last - last;
-        if (elapsed > 1000 || perf.ok) {
-          filtered.length = data.length; // make sure they stay up-to-date
-          subscriber.next({ state, data: [filtered], key });
-          last = perf.last;
-        }
+        // Try to send this
+        filtered.length = data.length; // make sure they stay up-to-date
+        broadcast([filtered]);
       };
 
       if (options.frame) {
@@ -306,6 +328,9 @@ export class CentrifugeSrv implements GrafanaLiveSrv {
 
       return () => {
         sub.unsubscribe();
+        if (refresh) {
+          clearInterval(refresh);
+        }
       };
     });
   }

@@ -90,6 +90,7 @@ export class GrafanaDatasource extends DataSourceApi<GrafanaQuery> {
             addr: addr!,
             filter,
             buffer,
+            autoRefresh: 100, // 10hz
           })
         );
       } else {

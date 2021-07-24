@@ -17,6 +17,17 @@ export interface LiveDataFilter {
 }
 
 /**
+ * Indicate if the frame is appened or replace
+ *
+ * @public -- but runtime
+ */
+export enum ChannelResultFormat {
+  Frame = 'frame', // Single frame (joined by labels)
+  LabeledFrames = 'frames', // New frame for each label set
+  MessageFrame = 'message', // Frame with time, message
+}
+
+/**
  * @alpha
  */
 export interface LiveDataStreamOptions {
@@ -25,6 +36,11 @@ export interface LiveDataStreamOptions {
   key?: string;
   buffer?: StreamingFrameOptions;
   filter?: LiveDataFilter;
+  format?: ChannelResultFormat;
+
+  // Temporary solution:
+  // This behavior will be moved to panel level
+  autoRefresh?: number;
 }
 
 /**
