@@ -18,6 +18,7 @@ const (
 	DS_ACCESS_DIRECT  = "direct"
 	DS_ACCESS_PROXY   = "proxy"
 	DS_ES_OPEN_DISTRO = "grafana-es-open-distro-datasource"
+	DS_LOKI           = "loki"
 )
 
 var (
@@ -32,6 +33,12 @@ var (
 )
 
 type DsAccess string
+
+type Ruler struct {
+	BasicAuth     bool   `json:"basicAuth"`
+	BasicAuthUser string `json:"basicAuthUser"`
+	Url           string `json:"url"`
+}
 
 type DataSource struct {
 	Id      int64 `json:"id"`
@@ -71,12 +78,32 @@ func (ds *DataSource) DecryptedPassword() string {
 	return ds.decryptedValue("password", ds.Password)
 }
 
+// DecryptedRulerBasicAuthPassword returns data source ruler basic auth password in plain text. It uses secure_json_data[rulerBasicAuthPassword] variable.
+func (ds *DataSource) DecryptedRulerBasicAuthPassword() string {
+	return ds.decryptedValue("rulerBasicAuthPassword", "")
+}
+
 // decryptedValue returns decrypted value from secureJsonData
 func (ds *DataSource) decryptedValue(field string, fallback string) string {
 	if value, ok := ds.DecryptedValue(field); ok {
 		return value
 	}
 	return fallback
+}
+
+func (ds *DataSource) GetRulerProperties() *Ruler {
+	if ds.JsonData == nil {
+		return nil
+	}
+	props, ok := ds.JsonData.CheckGet("ruler")
+	if !ok {
+		return nil
+	}
+	return &Ruler{
+		Url:           props.Get("url").MustString(),
+		BasicAuth:     props.Get("basicAuth").MustBool(),
+		BasicAuthUser: props.Get("basicAuthUser").MustString(),
+	}
 }
 
 // ----------------------

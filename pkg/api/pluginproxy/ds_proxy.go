@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -26,8 +27,9 @@ import (
 )
 
 var (
-	logger = glog.New("data-proxy-log")
-	client = newHTTPClient()
+	logger     = glog.New("data-proxy-log")
+	client     = newHTTPClient()
+	rulerRegex = regexp.MustCompile(`/rules(/[a-z0-9\-._~%!$&'()*+,;=:@/]*)?`)
 )
 
 type DataSourceProxy struct {
@@ -73,7 +75,15 @@ func (lw *logWrapper) Write(p []byte) (n int, err error) {
 // NewDataSourceProxy creates a new Datasource proxy
 func NewDataSourceProxy(ds *models.DataSource, plugin *plugins.DataSourcePlugin, ctx *models.ReqContext,
 	proxyPath string, cfg *setting.Cfg, clientProvider httpclient.Provider, oAuthTokenService oauthtoken.OAuthTokenService) (*DataSourceProxy, error) {
-	targetURL, err := datasource.ValidateURL(ds.Type, ds.Url)
+	url := ds.Url
+	if cfg.IsNgAlertEnabled() && isRulerPath(proxyPath) {
+		rulerProps := ds.GetRulerProperties()
+		if rulerProps != nil && rulerProps.Url != "" {
+			url = rulerProps.Url
+		}
+	}
+
+	targetURL, err := datasource.ValidateURL(ds.Type, url)
 	if err != nil {
 		return nil, err
 	}
@@ -206,10 +216,8 @@ func (proxy *DataSourceProxy) director(req *http.Request) {
 
 	req.URL.Path = unescapedPath
 
-	if proxy.ds.BasicAuth {
-		req.Header.Set("Authorization", util.GetBasicAuthHeader(proxy.ds.BasicAuthUser,
-			proxy.ds.DecryptedBasicAuthPassword()))
-	}
+	rulerProperties := proxy.ds.GetRulerProperties()
+	proxy.setAuthorisation(req, rulerProperties)
 
 	dsAuth := req.Header.Get("X-DS-Authorization")
 	if len(dsAuth) > 0 {
@@ -327,6 +335,47 @@ func (proxy *DataSourceProxy) logRequest() {
 		"body", body)
 }
 
+func (proxy *DataSourceProxy) getRulerURL(rulerProperties *models.Ruler) (rulerURL *url.URL) {
+	if rulerProperties != nil && rulerProperties.Url != "" {
+		u, err := url.Parse(rulerProperties.Url)
+		if err != nil {
+			return nil
+		}
+		rulerURL = u
+	}
+	return rulerURL
+}
+
+func (proxy *DataSourceProxy) isRulerReq(rulerProperties *models.Ruler) bool {
+	if proxy.ds.Type != models.DS_PROMETHEUS && proxy.ds.Type != "loki" {
+		return false
+	}
+
+	if rulerProperties == nil {
+		return false
+	}
+
+	rulerURL := proxy.getRulerURL(rulerProperties)
+	if isRulerPath(proxy.proxyPath) &&
+		proxy.targetUrl != nil &&
+		rulerURL != nil &&
+		proxy.targetUrl.String() == rulerURL.String() {
+		return true
+	}
+	return false
+}
+
+func (proxy *DataSourceProxy) setAuthorisation(req *http.Request, rulerProperties *models.Ruler) {
+	if proxy.isRulerReq(rulerProperties) {
+		if rulerProperties != nil && rulerProperties.BasicAuth {
+			req.Header.Set("Authorization", util.GetBasicAuthHeader(rulerProperties.BasicAuthUser,
+				proxy.ds.DecryptedRulerBasicAuthPassword()))
+		}
+	} else if proxy.ds.BasicAuth {
+		req.Header.Set("Authorization", util.GetBasicAuthHeader(proxy.ds.BasicAuthUser,
+			proxy.ds.DecryptedBasicAuthPassword()))
+	}
+}
 func checkWhiteList(c *models.ReqContext, host string) bool {
 	if host != "" && len(setting.DataProxyWhiteList) > 0 {
 		if _, exists := setting.DataProxyWhiteList[host]; !exists {
@@ -336,4 +385,8 @@ func checkWhiteList(c *models.ReqContext, host string) bool {
 	}
 
 	return true
+}
+
+func isRulerPath(proxyPath string) bool {
+	return rulerRegex.Match([]byte(proxyPath))
 }
