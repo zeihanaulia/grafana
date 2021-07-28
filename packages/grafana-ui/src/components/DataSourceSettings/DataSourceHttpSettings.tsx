@@ -64,6 +64,7 @@ export const DataSourceHttpSettings: React.FC<HttpSettingsProps> = (props) => {
     sigV4AuthToggleEnabled,
     azureAuthSettings,
     title,
+    proxySettingsEnabled = true,
   } = props;
   let urlTooltip;
   const [isAccessHelpVisible, setIsAccessHelpVisible] = useState(false);
@@ -246,7 +247,7 @@ export const DataSourceHttpSettings: React.FC<HttpSettingsProps> = (props) => {
             </div>
           )}
 
-          {dataSourceConfig.access === 'proxy' && (
+          {dataSourceConfig.access === 'proxy' && proxySettingsEnabled && (
             <HttpProxySettings
               dataSourceConfig={dataSourceConfig}
               onChange={(jsonData) => onSettingsChange({ jsonData })}

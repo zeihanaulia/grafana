@@ -1,6 +1,6 @@
 import { AlertingUIDataSourceJsonData, DataSourcePluginOptionsEditorProps, DataSourceSettings } from '@grafana/data';
 import { omit } from 'lodash';
-import React from 'react';
+import React, { useState } from 'react';
 import { Switch } from '../Forms/Legacy/Switch/Switch';
 import { DataSourceHttpSettings } from './DataSourceHttpSettings';
 
@@ -13,22 +13,14 @@ export function AlertingSettings<T extends AlertingUIDataSourceJsonData>({
   onOptionsChange,
   sigV4AuthEnabled,
 }: Props<T>): JSX.Element {
-  const onCustomRulerURLToggle = (event: React.SyntheticEvent<HTMLInputElement, Event>) => {
-    const checked = event!.currentTarget.checked;
-    if (checked) {
-      onOptionsChange({
-        ...options,
-        jsonData: {
-          ...options.jsonData,
-          useCustomRulerURL: true,
-        },
-      });
-    } else {
+  const [customRulerHTTPSettings, setCustomRulerHTTPSettings] = useState(!!options.jsonData.ruler?.url);
+  const onCustomRulerURLToggle = (checked: boolean) => {
+    setCustomRulerHTTPSettings(checked);
+    if (!checked) {
       onOptionsChange({
         ...options,
         jsonData: {
           ...(omit(options.jsonData, 'ruler') as T),
-          useCustomRulerURL: false,
         },
         secureJsonData: omit(options.secureJsonData ?? {}, 'rulerBasicAuthPassword'),
         secureJsonFields: omit(options.secureJsonFields, 'rulerBasicAuthPassword'),
@@ -44,24 +36,34 @@ export function AlertingSettings<T extends AlertingUIDataSourceJsonData>({
             label="Manage alerts via Alerting UI"
             labelClass="width-13"
             checked={options.jsonData.manageAlerts !== false}
-            onChange={(event) =>
+            onChange={(event) => {
+              const checked = !!event!.currentTarget.checked;
+              let jsonData = { ...options.jsonData, manageAlerts: checked };
+              if (!checked) {
+                if (jsonData.ruler) {
+                  delete jsonData.ruler;
+                }
+                setCustomRulerHTTPSettings(false);
+              }
               onOptionsChange({
                 ...options,
-                jsonData: { ...options.jsonData, manageAlerts: event!.currentTarget.checked },
-              })
-            }
+                jsonData,
+              });
+            }}
           />
         </div>
-        <div className="gf-form-inline">
-          <Switch
-            label="Custom ruler URL"
-            labelClass="width-13"
-            checked={options.jsonData.useCustomRulerURL === true}
-            onChange={onCustomRulerURLToggle}
-          />
-        </div>
+        {options.jsonData.manageAlerts !== false && (
+          <div className="gf-form-inline">
+            <Switch
+              label="Custom ruler URL"
+              labelClass="width-13"
+              checked={customRulerHTTPSettings}
+              onChange={(e) => onCustomRulerURLToggle(!!e.currentTarget.checked)}
+            />
+          </div>
+        )}
       </div>
-      {!!options.jsonData.useCustomRulerURL && (
+      {customRulerHTTPSettings && (
         <div className="page-body">
           <DataSourceHttpSettings
             title="Ruler"
@@ -70,6 +72,7 @@ export function AlertingSettings<T extends AlertingUIDataSourceJsonData>({
             showAccessOptions={false}
             onChange={(data) => onOptionsChange(mergeInRulerHTTPDataSourceSettings(options, data))}
             sigV4AuthToggleEnabled={sigV4AuthEnabled}
+            proxySettingsEnabled={false}
           />
         </div>
       )}
