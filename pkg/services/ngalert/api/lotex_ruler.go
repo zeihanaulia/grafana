@@ -15,8 +15,9 @@ import (
 )
 
 var dsTypeToRulerPrefix = map[string]string{
-	"prometheus": "/rules",
-	"loki":       "/api/prom/rules",
+	"prometheus":       "/rules",
+	"prometheus-ruler": "/api/v1/rules",
+	"loki":             "/api/prom/rules",
 }
 
 type LotexRuler struct {
@@ -154,7 +155,12 @@ func (r *LotexRuler) getPrefix(ctx *models.ReqContext) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	prefix, ok := dsTypeToRulerPrefix[ds.Type]
+
+	key := ds.Type
+	if ds.Type == models.DS_PROMETHEUS && ds.GetRulerProperties().Url != "" {
+		key = "prometheus-ruler"
+	}
+	prefix, ok := dsTypeToRulerPrefix[key]
 	if !ok {
 		return "", fmt.Errorf("unexpected datasource type. expecting loki or prometheus")
 	}
