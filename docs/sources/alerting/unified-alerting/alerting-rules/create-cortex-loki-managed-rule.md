@@ -10,7 +10,7 @@ weight = 400
 Grafana allows you manage alerting rules for an external Cortex or Loki instance. 
 
 
-In order for both Cortex and Loki data sources to work with Grafana 8.0 alerting, enable the ruler API by configuring their respective services.  The`local` rule storage type, default for Loki, only supports viewing of rules. If you want to edit rules, then configure one of the other rule storage types. When configuring a Grafana Prometheus data source to point to Cortex, use the legacy `/api/prom` prefix, not `/prometheus`. Only single-binary mode is currently supported, and it is not possible to provide a separate URL for the ruler API. 
+In order for both Cortex and Loki data sources to work with Grafana 8.0 alerting, enable the ruler API by configuring their respective services.  The`local` rule storage type, default for Loki, only supports viewing of rules. If you want to edit rules, then configure one of the other rule storage types. When configuring a Grafana Prometheus data source to point to Cortex in single-binary mode, use the legacy `/api/prom` prefix. If using `/prometheus` prefix or running Cortex or Loki in microservices mode, go to data source settings, toggle **Custom ruler URL** and fill out alternative HTTP options for the ruler service.
 
 ## Add or edit a Cortex or Loki managed alerting rule
 
@@ -18,7 +18,7 @@ In order for both Cortex and Loki data sources to work with Grafana 8.0 alerting
 1. To create a new alert rule, click **New alert rule**. To edit an existing rule, expand one of the rules in the **Cortex / Loki** section and click **Edit**.
 1. Click on the **Alert type** drop down and select **Cortex / Loki managed alert**.
 1. Fill out the rest of the fields. Descriptions are listed below in [Alert rule fields](#alert-rule-fields).
-1. When you have finished writing your rule, click **Save** in the upper right corner to save the rule,, or **Save and exit** to save and exit rule editing.
+1. When you have finished writing your rule, click **Save** in the upper right corner to save the rule, or **Save and exit** to save and exit rule editing.
 
 ## Alert rule fields
 

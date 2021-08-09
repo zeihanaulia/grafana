@@ -25,6 +25,8 @@ To access Loki settings, click the **Configuration** (gear) icon, then click **D
 | `URL`                 | URL of the Loki instance, e.g., `http://localhost:3100`.                                                                                             |
 | `Whitelisted Cookies` | Grafana Proxy deletes forwarded cookies by default. Specify cookies by name that should be forwarded to the data source.                                  |
 | `Maximum lines`       | Upper limit for the number of log lines returned by Loki (default is 1000). Lower this limit if your browser is sluggish when displaying logs in Explore. |
+| `Manage alerts via Alerting UI` | Uncheck if you do not want to use [Grafana Alerting UI]({{< relref "../alerting/unified-alerting/_index.md" >}}) to manage alerts for this Loki datasource. |
+| `Custom ruler URL` | If running Loki in microservices mode, check this to configure URL and authentication options separately for the ruler service. |
 
 ### Derived fields
 
