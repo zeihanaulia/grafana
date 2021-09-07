@@ -208,6 +208,10 @@ func getPluginSignatureState(log log.Logger, plugin *plugins.PluginBase) (plugin
 			}, nil
 		}
 		manifestFiles[p] = true
+
+		if err := f.Close(); err != nil {
+			log.Warn("Failed to close plugin file", "path", fp, "err", err)
+		}
 	}
 
 	if manifest.isV2() {
