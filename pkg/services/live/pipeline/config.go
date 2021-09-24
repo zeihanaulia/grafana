@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/services/live/managedstream"
 
 	"github.com/centrifugal/centrifuge"
@@ -72,11 +73,24 @@ type ChannelRuleSettings struct {
 	Processor  *ProcessorConfig  `json:"processor,omitempty"`
 	Outputter  *OutputterConfig  `json:"output,omitempty"`
 }
+type ChannelAuthCheckConfig struct {
+	RequireRole models.RoleType `json:"role,omitempty"`
+}
+
+type ChannelAuthConfig struct {
+	// By default anyone can subscribe
+	Subscribe *ChannelAuthCheckConfig `json:"subscribe,omitempty"`
+
+	// By default HTTP and WS require admin permissions to publish
+	Publish *ChannelAuthCheckConfig `json:"publish,omitempty"`
+}
 
 type ChannelRule struct {
-	OrgId    int64               `json:"-"`
-	Pattern  string              `json:"pattern"`
-	Settings ChannelRuleSettings `json:"settings"`
+	OrgId       int64               `json:"-"`
+	Pattern     string              `json:"pattern"`
+	Description string              `json:"description"`
+	Auth        ChannelAuthConfig   `json:"auth"`
+	Settings    ChannelRuleSettings `json:"settings"`
 }
 
 type RemoteWriteBackend struct {
