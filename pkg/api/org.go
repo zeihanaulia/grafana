@@ -54,7 +54,7 @@ func (hs *HTTPServer) GetOrgByName(c *models.ReqContext) response.Response {
 
 func (hs *HTTPServer) getOrgHelper(c *models.ReqContext, orgID int64) response.Response {
 	hasAccess := accesscontrol.HasAccess(hs.AccessControl, c)
-	if !hasAccess(accesscontrol.NoReq, accesscontrol.EvalPermission(ActionOrgsRead, buildOrgsIdScope(c.OrgId))) {
+	if !hasAccess(accesscontrol.NoReq, accesscontrol.EvalPermission(ActionOrgsRead, buildOrgsIdScope(orgID))) {
 		return response.Error(403, "Access denied to org", nil)
 	}
 
