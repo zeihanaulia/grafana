@@ -17,7 +17,8 @@ const (
 	ActionDatasourcesDelete = "datasources:delete"
 	ActionDatasourcesIDRead = "datasources:id:read"
 
-	ActionOrgsRead = "orgs:read"
+	ActionOrgsRead  = "orgs:read"
+	ActionOrgsWrite = "orgs:write"
 )
 
 // API related scopes

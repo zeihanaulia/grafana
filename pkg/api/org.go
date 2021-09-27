@@ -108,16 +108,21 @@ func CreateOrg(c *models.ReqContext, cmd models.CreateOrgCommand) response.Respo
 }
 
 // PUT /api/org
-func UpdateOrgCurrent(c *models.ReqContext, form dtos.UpdateOrgForm) response.Response {
-	return updateOrgHelper(form, c.OrgId)
+func (hs *HTTPServer) UpdateCurrentOrg(c *models.ReqContext, form dtos.UpdateOrgForm) response.Response {
+	return hs.updateOrgHelper(c, form, c.OrgId)
 }
 
 // PUT /api/orgs/:orgId
-func UpdateOrg(c *models.ReqContext, form dtos.UpdateOrgForm) response.Response {
-	return updateOrgHelper(form, c.ParamsInt64(":orgId"))
+func (hs *HTTPServer) UpdateOrg(c *models.ReqContext, form dtos.UpdateOrgForm) response.Response {
+	return hs.updateOrgHelper(c, form, c.ParamsInt64(":orgId"))
 }
 
-func updateOrgHelper(form dtos.UpdateOrgForm, orgID int64) response.Response {
+func (hs *HTTPServer) updateOrgHelper(c *models.ReqContext, form dtos.UpdateOrgForm, orgID int64) response.Response {
+	hasAccess := accesscontrol.HasAccess(hs.AccessControl, c)
+	if !hasAccess(accesscontrol.NoReq, accesscontrol.EvalPermission(ActionOrgsWrite, buildOrgsIdScope(orgID))) {
+		return response.Error(403, "Access denied to org", nil)
+	}
+
 	cmd := models.UpdateOrgCommand{Name: form.Name, OrgId: orgID}
 	if err := bus.Dispatch(&cmd); err != nil {
 		if errors.Is(err, models.ErrOrgNameTaken) {
