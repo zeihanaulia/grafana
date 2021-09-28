@@ -33,9 +33,6 @@ export interface CanvasElementProps<TConfig = any, TData = any> {
 
   // Raw data
   data?: TData;
-
-  style?: any;
-  ref?: any;
 }
 
 /**
