@@ -48,7 +48,7 @@ export const CanvasElementEditor: FC<CanvasElementEditorProps> = ({ options, onC
     return builder;
   }, [options?.type]);
 
-  // The react componnets
+  // The react components
   const layerOptions = useMemo(() => {
     const layer = canvasElementRegistry.getIfExists(options?.type);
     if (!optionsEditorBuilder || !layer) {
@@ -81,7 +81,7 @@ export const CanvasElementEditor: FC<CanvasElementEditorProps> = ({ options, onC
       // Always use the same category
       (categoryNames) => category,
 
-      // Custom upate function
+      // Custom update function
       (path: string, value: any) => {
         onChange(setOptionImmutably(currentOptions, path, value) as any);
       },
