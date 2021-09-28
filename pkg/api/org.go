@@ -124,7 +124,7 @@ func (hs *HTTPServer) updateOrgHelper(c *models.ReqContext, form dtos.UpdateOrgF
 	}
 
 	cmd := models.UpdateOrgCommand{Name: form.Name, OrgId: orgID}
-	if err := bus.Dispatch(&cmd); err != nil {
+	if err := sqlstore.UpdateOrg(&cmd); err != nil {
 		if errors.Is(err, models.ErrOrgNameTaken) {
 			return response.Error(400, "Organization name taken", err)
 		}
