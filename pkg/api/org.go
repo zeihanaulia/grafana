@@ -162,7 +162,7 @@ func (hs *HTTPServer) updateOrgAddressHelper(c *models.ReqContext, form dtos.Upd
 		},
 	}
 
-	if err := bus.Dispatch(&cmd); err != nil {
+	if err := sqlstore.UpdateOrgAddress(&cmd); err != nil {
 		return response.Error(500, "Failed to update org address", err)
 	}
 
