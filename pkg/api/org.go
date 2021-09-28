@@ -135,16 +135,21 @@ func (hs *HTTPServer) updateOrgHelper(c *models.ReqContext, form dtos.UpdateOrgF
 }
 
 // PUT /api/org/address
-func UpdateOrgAddressCurrent(c *models.ReqContext, form dtos.UpdateOrgAddressForm) response.Response {
-	return updateOrgAddressHelper(form, c.OrgId)
+func (hs *HTTPServer) UpdateCurrentOrgAddress(c *models.ReqContext, form dtos.UpdateOrgAddressForm) response.Response {
+	return hs.updateOrgAddressHelper(c, form, c.OrgId)
 }
 
 // PUT /api/orgs/:orgId/address
-func UpdateOrgAddress(c *models.ReqContext, form dtos.UpdateOrgAddressForm) response.Response {
-	return updateOrgAddressHelper(form, c.ParamsInt64(":orgId"))
+func (hs *HTTPServer) UpdateOrgAddress(c *models.ReqContext, form dtos.UpdateOrgAddressForm) response.Response {
+	return hs.updateOrgAddressHelper(c, form, c.ParamsInt64(":orgId"))
 }
 
-func updateOrgAddressHelper(form dtos.UpdateOrgAddressForm, orgID int64) response.Response {
+func (hs *HTTPServer) updateOrgAddressHelper(c *models.ReqContext, form dtos.UpdateOrgAddressForm, orgID int64) response.Response {
+	hasAccess := accesscontrol.HasAccess(hs.AccessControl, c)
+	if !hasAccess(accesscontrol.NoReq, accesscontrol.EvalPermission(ActionOrgsWrite, buildOrgsIdScope(orgID))) {
+		return response.Error(403, "Access denied to org", nil)
+	}
+
 	cmd := models.UpdateOrgAddressCommand{
 		OrgId: orgID,
 		Address: models.Address{
