@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { PanelProps } from '@grafana/data';
 import { PanelOptions } from './models.gen';
 import { ReplaySubject, Subscription } from 'rxjs';
@@ -92,6 +92,6 @@ export class CanvasPanel extends Component<Props, State> {
   }
 
   render() {
-    return this.scene.render();
+    return <div id="canvas-panel">{this.scene.render()}</div>;
   }
 }
