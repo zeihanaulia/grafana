@@ -31,10 +31,10 @@ import {
   DateTimeInput,
   EventBusExtended,
   EventBusSrv,
+  PanelModel as IPanelModel,
   TimeRange,
   TimeZone,
   UrlQueryValue,
-  PanelModel as IPanelModel,
 } from '@grafana/data';
 import { CoreEvents, DashboardMeta, KioskMode } from 'app/types';
 import { GetVariables, getVariables } from 'app/features/variables/state/selectors';
@@ -703,6 +703,9 @@ export class DashboardModel {
     if (yOffset > 0) {
       const panelBelowIndex = panelIndex + selectedOptions.length;
       for (let i = panelBelowIndex; i < this.panels.length; i++) {
+        if (this.panels[i].repeat && this.panels[i].type !== 'row') {
+          continue;
+        }
         this.panels[i].gridPos.y += yOffset;
       }
     }
